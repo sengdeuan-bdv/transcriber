@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Audio Transcriber (Prompt Generator)</title>
+    <title>AI Audio Transcriber (Direct API)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- ເພີ່ມ lamejs ສຳລັບແປງໄຟລ໌ເປັນ MP3 ຜ່ານ Browser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
     <style>
         body {
             font-family: 'Noto Sans Lao', sans-serif;
@@ -16,6 +18,24 @@
         ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #3b82f6;
+            width: 24px;
+            height: 24px;
+            -webkit-animation: spin 1s linear infinite; /* Safari */
+            animation: spin 1s linear infinite;
+        }
+        @-webkit-keyframes spin {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="text-gray-800 antialiased min-h-screen flex flex-col">
@@ -26,11 +46,11 @@
             <div class="flex justify-between h-16 items-center">
                 <div class="flex items-center gap-3">
                     <div class="bg-blue-600 p-2 rounded-lg text-white">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>
                     </div>
                     <div class="flex flex-col">
-                        <span class="font-bold text-xl text-gray-900">Audio Transcriber <span class="text-gray-400 font-normal text-sm border-l ml-2 pl-2 border-gray-300">Prompt Generator</span></span>
-                        <span class="text-xs font-medium text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 tracking-wide">ສຳລັບນຳໄປໃຊ້ກັບໜ້າເວັບ Google Gemini ✨</span>
+                        <span class="font-bold text-xl text-gray-900">AI Audio Transcriber</span>
+                        <span class="text-xs font-medium text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 tracking-wide">ເຊື່ອມຕໍ່ໂດຍກົງກັບ Google Gemini API ✨</span>
                     </div>
                 </div>
             </div>
@@ -47,7 +67,7 @@
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
                         <svg class="w-5 h-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
-                        ການຕັ້ງຄ່າກ່ອນສ້າງຄຳສັ່ງ (Settings)
+                        ການຕັ້ງຄ່າ (Settings)
                     </h2>
                     
                     <!-- Language Selection -->
@@ -59,17 +79,27 @@
                         </select>
                     </div>
 
-                    <!-- File Upload (Mock for Prompt gen) -->
+                    <!-- Mode Selection (NEW) -->
                     <div class="mb-5">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">ໄຟລ໌ສຽງ (ພຽງແຕ່ເລືອກເພື່ອເອົາຊື່ໄຟລ໌)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ຮູບແບບການຖອດສຽງ (Transcription Mode)</label>
+                        <select id="mode-select" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition">
+                            <option value="general">ຖອດສຽງທົ່ວໄປ (General)</option>
+                            <option value="nofiller">ຕັດຄຳໂຕງໂຕ້ຍອອກ (No fillers: ເອີ, ອ່າ...)</option>
+                            <option value="interview">ແບບສຳພາດ (ແຍກ ຜູ້ຖາມ - ຜູ້ຕອບ)</option>
+                        </select>
+                    </div>
+
+                    <!-- File Upload -->
+                    <div class="mb-5">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ໄຟລ໌ສຽງ (Audio File)</label>
                         <div id="dropzone" class="flex items-center justify-center w-full">
-                            <label for="audio-upload" class="flex flex-col items-center justify-center w-full h-40 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition">
+                            <label for="audio-upload" class="flex flex-col items-center justify-center w-full h-40 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition relative overflow-hidden">
                                 <div class="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
                                     <svg class="w-10 h-10 mb-3 text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
                                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
                                     </svg>
-                                    <p class="mb-2 text-sm text-gray-600"><span class="font-semibold">ຄລິກເພື່ອເລືອກໄຟລ໌</span> ຫຼື ລາກໄຟລ໌ມາວາງ</p>
-                                    <p class="text-xs text-gray-500">MP3, AAC, WAV, M4A (Gemini ຮອງຮັບສູງສຸດ 200MB)</p>
+                                    <p class="mb-2 text-sm text-gray-600"><span class="font-semibold">ຄລິກເພື່ອອັບໂຫຼດ</span> ຫຼື ລາກໄຟລ໌ມາວາງ</p>
+                                    <p class="text-xs text-gray-500">MP3, AAC, WAV (ຖ້າເກີນ 20MB ລະບົບຈະມີປຸ່ມໃຫ້ແບ່ງໄຟລ໌)</p>
                                 </div>
                                 <input id="audio-upload" type="file" class="hidden" accept="audio/*" onchange="handleFileSelect(event)" />
                             </label>
@@ -84,22 +114,42 @@
                                     <p id="file-size" class="text-xs text-gray-500"></p>
                                 </div>
                             </div>
-                            <button onclick="removeFile()" class="text-gray-400 hover:text-red-500 p-1">
+                            <button onclick="removeFile()" class="text-gray-400 hover:text-red-500 p-1" id="btn-remove-file">
                                 <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
+
+                        <!-- Convert to MP3 Section (NEW) -->
+                        <div id="mp3-convert-section" class="hidden mt-2 bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex justify-between items-center">
+                            <div class="text-xs text-indigo-800">
+                                <span class="font-semibold block sm:inline">ຢາກໃຫ້ອັບໂຫຼດໄວຂຶ້ນບໍ່?</span> ລອງບີບອັດໄຟລ໌ເບິ່ງ.
+                            </div>
+                            <button onclick="convertToMP3()" class="flex-shrink-0 flex items-center gap-1.5 text-xs font-medium text-white bg-indigo-500 hover:bg-indigo-600 px-3 py-1.5 rounded-md transition shadow-sm">
+                                <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                ແປງເປັນ MP3
+                            </button>
+                        </div>
+
+                        <!-- Split Audio Section (Appears when file > 20MB) -->
+                        <div id="split-section" class="hidden mt-4 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                            <p class="text-sm text-yellow-800 mb-3 font-medium">⚠️ ໄຟລ໌ມີຂະໜາດໃຫຍ່ກວ່າ 20MB, ຈຳເປັນຕ້ອງແບ່ງໄຟລ໌ເພື່ອບໍ່ໃຫ້ Browser ຄ້າງ.</p>
+                            <button onclick="splitAudioFile()" class="w-full flex items-center justify-center gap-2 text-yellow-900 bg-yellow-200 hover:bg-yellow-300 focus:ring-4 focus:ring-yellow-100 font-medium rounded-lg text-sm px-4 py-2 transition">
+                                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"></path></svg>
+                                ແບ່ງໄຟລ໌ (ສ່ວນລະ 5MB)
+                            </button>
+                        </div>
+
+                        <!-- Parts List UI -->
+                        <div id="parts-list" class="hidden mt-4 space-y-2 max-h-60 overflow-y-auto pr-1">
+                            <!-- Chunks will be injected here -->
+                        </div>
                     </div>
 
-                    <!-- Action Buttons -->
-                    <div class="space-y-3 pt-2 border-t border-gray-100 pt-5">
-                        <button onclick="generatePrompt('general')" class="w-full flex items-center justify-center gap-2 text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-3 focus:outline-none transition">
-                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                            ສ້າງຄຳສັ່ງ (ຖອດທົ່ວໄປ)
-                        </button>
-                        
-                        <button onclick="generatePrompt('nofiller')" class="w-full flex items-center justify-center gap-2 text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-3 focus:outline-none transition">
-                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 15.536c-1.171 1.952-3.07 1.952-4.242 0-1.172-1.953-1.172-5.119 0-7.072 1.171-1.952 3.07-1.952 4.242 0M8 10.5h4m-4 3h4m9-1.5a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            ສ້າງຄຳສັ່ງ (ຕັດຄຳໂຕງໂຕ້ຍອອກ)
+                    <!-- Action Buttons (Main file) -->
+                    <div id="main-actions" class="space-y-3 pt-2 border-t border-gray-100 pt-5">
+                        <button id="btn-start" onclick="startMainTranscription()" class="w-full flex items-center justify-center gap-2 text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-3 focus:outline-none transition disabled:opacity-50 disabled:cursor-not-allowed">
+                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            ເລີ່ມຖອດສຽງອັດຕະໂນມັດ
                         </button>
                     </div>
 
@@ -107,37 +157,15 @@
             </div>
 
             <!-- Right Column: Output Workflow -->
-            <div class="lg:col-span-7 flex flex-col gap-6 lg:h-[700px]">
+            <div class="lg:col-span-7 flex flex-col lg:h-[650px]">
                 
-                <!-- Box 1: Prompt Result -->
-                <div class="bg-white rounded-2xl shadow-sm border border-blue-200 flex flex-col overflow-hidden">
-                    <div class="border-b border-blue-100 p-4 bg-blue-50/50 flex justify-between items-center">
-                        <h2 class="text-md font-semibold flex items-center gap-2 text-blue-800">
-                            <span class="bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded-full text-sm">1</span>
-                            ກັອບປີ້ຄຳສັ່ງ (Prompt) ໄປວາງໃນ Gemini
-                        </h2>
-                        <div class="flex gap-2">
-                            <button onclick="copyPrompt()" class="flex items-center gap-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-md transition shadow-sm">
-                                <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                                Copy ຄຳສັ່ງ
-                            </button>
-                            <a href="https://gemini.google.com" target="_blank" class="flex items-center gap-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-md transition shadow-sm">
-                                ເປີດເວັບ Gemini 
-                                <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                            </a>
-                        </div>
-                    </div>
-                    <div class="p-4">
-                        <textarea id="prompt-output" class="w-full h-32 p-3 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg resize-none focus:ring-blue-500 focus:border-blue-500 outline-none" readonly placeholder="ເລືອກໄຟລ໌ ແລະ ກົດປຸ່ມສ້າງຄຳສັ່ງທາງດ້ານຊ້າຍມື ແລ້ວຄຳສັ່ງຈະສະແດງຢູ່ບ່ອນນີ້..."></textarea>
-                    </div>
-                </div>
-
-                <!-- Box 2: Transcript Input for Export -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col flex-grow overflow-hidden">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full overflow-hidden">
+                    
+                    <!-- Output Header -->
                     <div class="border-b border-gray-100 p-4 bg-gray-50 flex justify-between items-center">
-                        <h2 class="text-md font-semibold flex items-center gap-2 text-gray-800">
-                            <span class="bg-gray-600 text-white w-6 h-6 flex items-center justify-center rounded-full text-sm">2</span>
-                            ວາງຂໍ້ຄວາມທີ່ໄດ້ຈາກ Gemini
+                        <h2 class="text-lg font-semibold flex items-center gap-2 text-gray-800">
+                            <svg class="w-5 h-5 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            ຂໍ້ຄວາມທີ່ຖອດໄດ້ (Transcript)
                         </h2>
                         
                         <button onclick="exportToWord()" class="flex items-center gap-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-md transition shadow-sm">
@@ -146,8 +174,16 @@
                         </button>
                     </div>
 
+                    <!-- Output Textarea -->
                     <div class="flex-grow relative">
-                        <textarea id="transcript-output" class="w-full h-64 lg:h-full p-6 text-gray-700 bg-white border-none resize-none focus:ring-0 outline-none leading-relaxed" placeholder="ຫຼັງຈາກ Gemini ທຳການຖອດສຽງສຳເລັດແລ້ວ, ໃຫ້ກັອບປີ້ຂໍ້ຄວາມດັ່ງກ່າວມາວາງໃສ່ບ່ອນນີ້ ແລ້ວກົດປຸ່ມ Export ເປັນ Word..."></textarea>
+                        <textarea id="transcript-output" class="w-full h-full min-h-[400px] p-6 text-gray-700 bg-white border-none resize-none focus:ring-0 outline-none leading-relaxed" placeholder="ຫຼັງຈາກກົດປຸ່ມຖອດສຽງ ຂໍ້ຄວາມທີ່ໄດ້ຈາກ Gemini ຈະສະແດງຢູ່ບ່ອນນີ້..."></textarea>
+                        
+                        <!-- Loading Overlay -->
+                        <div id="loading-overlay" class="absolute inset-0 bg-white/90 backdrop-blur-sm hidden flex-col items-center justify-center z-10">
+                            <div class="loader mb-4"></div>
+                            <p id="loading-text" class="text-blue-600 font-medium">ກຳລັງອ່ານໄຟລ໌ສຽງ...</p>
+                            <p class="text-xs text-gray-500 mt-2 max-w-sm text-center">ກະລຸນາລໍຖ້າ, Gemini ກຳລັງປະມວນຜົນໄຟລ໌ສຽງຂອງທ່ານ.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -159,36 +195,51 @@
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
 
     <script>
+        // API Configuration
+        const apiKey = ""; 
+        
         // App State
         let currentFile = null;
+        let isProcessing = false;
+        let audioChunks = []; // Array to store splitted Blobs
         
         // UI Elements
         const fileInput = document.getElementById('audio-upload');
         const fileInfo = document.getElementById('file-info');
         const dropzone = document.getElementById('dropzone');
-        const promptOutput = document.getElementById('prompt-output');
-        const transcriptOutput = document.getElementById('transcript-output');
+        const btnStart = document.getElementById('btn-start');
+        const btnRemoveFile = document.getElementById('btn-remove-file');
+        const outputArea = document.getElementById('transcript-output');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingText = document.getElementById('loading-text');
+        
+        // Split UI Elements
+        const splitSection = document.getElementById('split-section');
+        const partsList = document.getElementById('parts-list');
+        const mainActions = document.getElementById('main-actions');
+        const mp3ConvertSection = document.getElementById('mp3-convert-section');
 
-        // Maximum file size check (200MB in bytes)
-        const MAX_FILE_SIZE = 200 * 1024 * 1024; 
+        // Safe threshold for Direct API via browser Base64 is 20MB
+        const MAX_FILE_SIZE = 20 * 1024 * 1024; 
+        const CHUNK_SIZE = 5 * 1024 * 1024; // Split at 5MB to be safe
 
         // -- Event Listeners for Drag and Drop --
         dropzone.addEventListener('dragover', (e) => {
             e.preventDefault();
-            dropzone.classList.add('border-blue-500', 'bg-blue-50');
+            if (!isProcessing) dropzone.classList.add('border-blue-500', 'bg-blue-50');
         });
         dropzone.addEventListener('dragleave', () => {
-            dropzone.classList.remove('border-blue-500', 'bg-blue-50');
+            if (!isProcessing) dropzone.classList.remove('border-blue-500', 'bg-blue-50');
         });
         dropzone.addEventListener('drop', (e) => {
             e.preventDefault();
+            if (isProcessing) return;
             dropzone.classList.remove('border-blue-500', 'bg-blue-50');
             if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
                 processSelectedFile(e.dataTransfer.files[0]);
             }
         });
 
-        // -- File Selection Logic --
         function handleFileSelect(event) {
             const file = event.target.files[0];
             if (file) {
@@ -198,94 +249,362 @@
 
         function processSelectedFile(file) {
             if (!file.type.startsWith('audio/') && !file.type.startsWith('video/')) {
-                showToast("ກະລຸນາເລືອກໄຟລ໌ສຽງ ຫຼື ວິດີໂອເທົ່ານັ້ນ.", "error");
+                showToast("ກະລຸນາເລືອກໄຟລ໌ສຽງເທົ່ານັ້ນ.", "error");
                 return;
-            }
-
-            if (file.size > MAX_FILE_SIZE) {
-                showToast("ໄຟລ໌ໃຫຍ່ກວ່າ 200MB! ເຊິ່ງອາດຈະເກີນຂອບເຂດທີ່ Gemini ຮອງຮັບ.", "warning");
             }
 
             currentFile = file;
+            audioChunks = []; // reset chunks
+            partsList.innerHTML = '';
+            partsList.classList.add('hidden');
             
+            // Display basic info
             document.getElementById('file-name').textContent = file.name;
             const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
             document.getElementById('file-size').textContent = `${sizeMB} MB`;
-            
             fileInfo.classList.remove('hidden');
-            showToast("ເລືອກໄຟລ໌ສຳເລັດ. ກະລຸນາກົດປຸ່ມສ້າງຄຳສັ່ງດ່ານລຸ່ມ.", "success");
+
+            // Show Convert to MP3 button 
+            mp3ConvertSection.classList.remove('hidden');
+
+            // Handle UI logic based on size
+            if (file.size > MAX_FILE_SIZE) {
+                splitSection.classList.remove('hidden');
+                mainActions.classList.add('hidden'); // Hide normal transcribe buttons
+                showToast("ໄຟລ໌ໃຫຍ່ກວ່າ 20MB, ກະລຸນາກົດປຸ່ມ 'ແບ່ງໄຟລ໌' ກ່ອນ", "warning");
+            } else {
+                splitSection.classList.add('hidden');
+                mainActions.classList.remove('hidden');
+            }
         }
 
         function removeFile() {
+            if (isProcessing) return;
             currentFile = null;
+            audioChunks = [];
             fileInput.value = "";
             fileInfo.classList.add('hidden');
-            promptOutput.value = "";
+            splitSection.classList.add('hidden');
+            partsList.classList.add('hidden');
+            mainActions.classList.remove('hidden');
+            mp3ConvertSection.classList.add('hidden');
         }
 
-        // -- Prompt Generation Logic --
-        function generatePrompt(mode) {
-            if (!currentFile) {
-                showToast("ກະລຸນາເລືອກໄຟລ໌ສຽງກ່ອນ ເພື່ອໃຫ້ຄຳສັ່ງສົມບູນທຸກປະການ!", "warning");
+        // -- Convert to MP3 Logic (NEW) --
+        async function convertToMP3() {
+            if (!currentFile) return;
+
+            if (typeof lamejs === 'undefined') {
+                showToast("ລະບົບແປງໄຟລ໌ MP3 ຍັງໂຫຼດບໍ່ສຳເລັດ, ກະລຸນາລໍຖ້າຈັກໜ່ອຍ.", "warning");
                 return;
+            }
+
+            setLoadingState(true);
+            loadingText.textContent = "ກຳລັງແປງໄຟລ໌ເປັນ MP3... (ອາດໃຊ້ເວລາໜ້ອຍໜຶ່ງຂຶ້ນກັບຄວາມຍາວສຽງ)";
+
+            try {
+                const arrayBuffer = await currentFile.arrayBuffer();
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Decode original audio data
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+                // Use a lower bitrate (64kbps) and downmix to Mono (1 channel) for voice
+                const sampleRate = audioBuffer.sampleRate;
+                const channels = 1; 
+                const kbps = 64;
+                const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, kbps);
+
+                const mp3Data = [];
+                // Get only the first channel (left) to convert to mono
+                const leftChannel = audioBuffer.getChannelData(0); 
+                const sampleBlockSize = 1152; 
+
+                // Convert Float32 (-1.0 to 1.0) to Int16 (-32768 to 32767)
+                const samples = new Int16Array(leftChannel.length);
+                for (let i = 0; i < leftChannel.length; i++) {
+                    let s = Math.max(-1, Math.min(1, leftChannel[i]));
+                    samples[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+
+                // Encode to MP3 chunks
+                for (let i = 0; i < samples.length; i += sampleBlockSize) {
+                    const sampleChunk = samples.subarray(i, i + sampleBlockSize);
+                    const mp3buf = mp3encoder.encodeBuffer(sampleChunk);
+                    if (mp3buf.length > 0) {
+                        mp3Data.push(mp3buf);
+                    }
+                }
+                const mp3buf = mp3encoder.flush();
+                if (mp3buf.length > 0) {
+                    mp3Data.push(mp3buf);
+                }
+
+                // Create new File from MP3 chunks
+                const blob = new Blob(mp3Data, { type: 'audio/mp3' });
+                const newFilename = currentFile.name.split('.')[0] + "_compressed.mp3";
+                const newFile = new File([blob], newFilename, { type: 'audio/mp3' });
+
+                // Replace current file and update UI
+                processSelectedFile(newFile);
+                
+                showToast("ແປງ ແລະ ບີບອັດເປັນ MP3 ສຳເລັດແລ້ວ! ຂະໜາດນ້ອຍລົງຫຼາຍ.", "success");
+
+            } catch (err) {
+                console.error("MP3 Conversion Error:", err);
+                showToast("ເກີດຂໍ້ຜິດພາດໃນການແປງໄຟລ໌. ໄຟລ໌ອາດຈະໃຫຍ່ເກີນໄປສຳລັບ RAM ຂອງ Browser.", "error");
+            } finally {
+                setLoadingState(false);
+            }
+        }
+
+        // -- File Splitting Logic --
+        function splitAudioFile() {
+            if (!currentFile) return;
+            
+            audioChunks = [];
+            let start = 0;
+            let partNumber = 1;
+            
+            while (start < currentFile.size) {
+                let end = Math.min(start + CHUNK_SIZE, currentFile.size);
+                let blob = currentFile.slice(start, end, currentFile.type);
+                audioChunks.push({
+                    id: partNumber,
+                    blob: blob,
+                    sizeMB: (blob.size / (1024 * 1024)).toFixed(2),
+                    status: 'pending' // pending, processing, done
+                });
+                start = end;
+                partNumber++;
+            }
+            
+            renderPartsList();
+            splitSection.classList.add('hidden');
+            partsList.classList.remove('hidden');
+            showToast(`ແບ່ງໄຟລ໌ສຳເລັດ! ໄດ້ທັງໝົດ ${audioChunks.length} ສ່ວນ.`, "success");
+        }
+
+        function renderPartsList() {
+            partsList.innerHTML = '';
+            audioChunks.forEach((chunk, index) => {
+                const isDone = chunk.status === 'done';
+                const isProcessingChunk = chunk.status === 'processing';
+                const isDisabled = isDone || isProcessingChunk || isProcessing;
+                
+                const div = document.createElement('div');
+                div.className = `flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border rounded-lg gap-3 ${isDone ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`;
+                
+                let actionHtml = '';
+                if (isDone) {
+                    actionHtml = `<span class="text-xs font-medium px-3 py-1.5 rounded-md text-green-700 bg-green-200">✓ ສຳເລັດແລ້ວ</span>`;
+                } else {
+                    actionHtml = `
+                        <div class="flex flex-wrap gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                            <button id="btn-chunk-gen-${index}" onclick="transcribeChunk(${index}, 'general')" 
+                                ${isDisabled ? 'disabled' : ''}
+                                class="flex-1 sm:flex-none text-xs font-medium px-3 py-1.5 rounded-md transition text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50">
+                                ຄົບຖ້ວນ
+                            </button>
+                            <button id="btn-chunk-nofil-${index}" onclick="transcribeChunk(${index}, 'nofiller')" 
+                                ${isDisabled ? 'disabled' : ''}
+                                class="flex-1 sm:flex-none text-xs font-medium px-3 py-1.5 rounded-md transition text-blue-700 bg-blue-100 hover:bg-blue-200 disabled:opacity-50">
+                                ຕັດໂຕງໂຕ້ຍ
+                            </button>
+                            <button id="btn-chunk-int-${index}" onclick="transcribeChunk(${index}, 'interview')" 
+                                ${isDisabled ? 'disabled' : ''}
+                                class="flex-1 sm:flex-none text-xs font-medium px-3 py-1.5 rounded-md transition text-purple-700 bg-purple-100 hover:bg-purple-200 disabled:opacity-50" title="ແຍກ ຜູ້ຖາມ ແລະ ຜູ້ຕອບ">
+                                ແບບສຳພາດ
+                            </button>
+                        </div>
+                    `;
+                }
+                
+                div.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium text-sm text-gray-800">ສ່ວນທີ ${chunk.id}</span>
+                        <span class="text-xs text-gray-500">(${chunk.sizeMB} MB)</span>
+                        ${isProcessingChunk ? '<span class="text-xs text-blue-500 animate-pulse">(ກຳລັງປະມວນຜົນ...)</span>' : ''}
+                    </div>
+                    ${actionHtml}
+                `;
+                partsList.appendChild(div);
+            });
+        }
+
+        function startMainTranscription() {
+            const mode = document.getElementById('mode-select').value;
+            startTranscription(mode, currentFile, "");
+        }
+
+        // -- Transcription wrapper for Chunks --
+        async function transcribeChunk(index, mode) {
+            const chunk = audioChunks[index];
+            if (!chunk) return;
+            
+            chunk.status = 'processing';
+            renderPartsList(); // update button state
+            
+            const success = await startTranscription(mode, chunk.blob, `\n\n--- ຕໍ່ເນື່ອງຈາກສ່ວນທີ ${chunk.id} ---\n`);
+            
+            if (success) {
+                chunk.status = 'done';
+            } else {
+                chunk.status = 'pending'; // revert if failed
+            }
+            renderPartsList();
+        }
+
+        // -- Read File to Base64 --
+        function readFileAsBase64(fileOrBlob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64String = reader.result.split(',')[1];
+                    resolve(base64String);
+                };
+                reader.onerror = (error) => {
+                    reject(error);
+                };
+                reader.readAsDataURL(fileOrBlob);
+            });
+        }
+
+        // -- API Request with Retry Logic --
+        async function fetchWithRetry(url, options, maxRetries = 5) {
+            let delays = [1000, 2000, 4000, 8000, 16000];
+            
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.ok) {
+                        return await response.json();
+                    }
+                    if (response.status === 400 || response.status === 403 || response.status === 404) {
+                        const errorData = await response.json();
+                        throw new Error(`API Error: ${errorData.error?.message || response.statusText}`);
+                    }
+                    throw new Error(`Server Error: ${response.status}`);
+                } catch (error) {
+                    if (i === maxRetries - 1) throw error;
+                    await new Promise(resolve => setTimeout(resolve, delays[i]));
+                }
+            }
+        }
+
+        // -- Main Direct API Transcription Logic --
+        // Modified to accept a specific targetBlob (for chunks) and an appendPrefix string
+        async function startTranscription(mode, targetBlob = currentFile, appendPrefix = "") {
+            if (!targetBlob) {
+                showToast("ກະລຸນາອັບໂຫຼດໄຟລ໌ສຽງກ່ອນ!", "warning");
+                return false;
             }
 
             const language = document.getElementById('language-select').value;
-            const filename = currentFile.name;
-            let finalPrompt = "";
+            const langText = language === 'lao' ? "Lao" : "English";
 
-            if (language === 'lao') {
-                if (mode === 'general') {
-                    finalPrompt = `ກະລຸນາຖອດສຽງຈາກໄຟລ໌ສຽງທີ່ແນບມານີ້ ຊື່ໄຟລ໌ "${filename}" ເປັນພາສາລາວ.\n\nຄຳສັ່ງສຳຄັນ: ໃຫ້ຖອດທຸກຄຳເວົ້າຕັ້ງແຕ່ຕົ້ນຈົນຈົບຄິບສຽງແບບຄົບຖ້ວນທຸກປະການ (Word-for-word). ຫ້າມຕັດຫຍໍ້ ແລະ ຫ້າມສະຫຼຸບຄວາມເດັດຂາດ. ໃຫ້ພິມສະເພາະຂໍ້ຄວາມທີ່ຖອດໄດ້ອອກມາເທົ່ານັ້ນ.`;
+            // Prompts
+            let systemInstructionText = "You are an expert audio transcription AI. Your task is to accurately transcribe the provided audio. You MUST transcribe EVERY word. DO NOT summarize.";
+            let userPromptText = `Please transcribe this audio into ${langText}. Provide a full, word-for-word transcript from start to finish.`;
+            
+            if (mode === 'nofiller') {
+                userPromptText = `Please transcribe this audio into ${langText}. Provide a full transcript, BUT YOU MUST REMOVE filler words, stutters, and hesitation marks (e.g., um, ah, er, like, you know, ເອີ, ອ່າ, ແບບ, ກະຄືວ່າ).`;
+            } else if (mode === 'interview') {
+                systemInstructionText = "You are an expert audio transcription AI specializing in speaker diarization. Your task is to accurately transcribe the audio and clearly identify the speakers.";
+                if (language === 'lao') {
+                    userPromptText = `ກະລຸນາຖອດສຽງຈາກໄຟລ໌ນີ້ເປັນພາສາລາວ. ໃຫ້ຖອດທຸກຄຳເວົ້າຕັ້ງແຕ່ຕົ້ນຈົນຈົບ. ສິ່ງສຳຄັນທີ່ສຸດ: ນີ້ແມ່ນບົດສົນທະນາ ຫຼື ການສຳພາດ. ກະລຸນາຟັງ ແລະ ແຍກຜູ້ເວົ້າຢ່າງຊັດເຈນ ໂດຍຂຶ້ນຕົ້ນປະໂຫຍກດ້ວຍຄຳວ່າ "ຜູ້ຖາມ:" ສຳລັບຄົນທີ່ຕັ້ງຄຳຖາມ ແລະ "ຜູ້ຕອບ:" ສຳລັບຄົນທີ່ຕອບ. ຫ້າມເອົາຄຳເວົ້າຂອງຜູ້ຖາມ ແລະ ຜູ້ຕອບ ມາລວມກັນໃນຫຍໍ້ໜ້າດຽວເດັດຂາດ. ໃຫ້ແຍກແຖວໃໝ່ທຸກຄັ້ງທີ່ປ່ຽນຄົນເວົ້າ.`;
                 } else {
-                    finalPrompt = `ກະລຸນາຖອດສຽງຈາກໄຟລ໌ສຽງທີ່ແນບມານີ້ ຊື່ໄຟລ໌ "${filename}" ເປັນພາສາລາວ.\n\nຄຳສັ່ງສຳຄັນ: ໃຫ້ຖອດຂໍ້ຄວາມຕັ້ງແຕ່ຕົ້ນຈົນຈົບ ແຕ່ໃຫ້ຕັດຄຳໂຕງໂຕ້ຍ, ຄຳຊ້ຳ, ຫຼື ຄຳລັງເລອອກ (ເຊັ່ນ: ເອີ, ອ່າ, ແບບວ່າ, ກະຄືວ່າ, ອັນນັ້ນ) ເພື່ອໃຫ້ອ່ານງ່າຍຂຶ້ນ ໂດຍຮັກສາເນື້ອໃນສຳຄັນໄວ້ໃຫ້ຄົບຖ້ວນທຸກປະການ. ຫ້າມສະຫຼຸບຄວາມ. ໃຫ້ພິມສະເພາະຂໍ້ຄວາມທີ່ຖອດໄດ້ອອກມາເທົ່ານັ້ນ.`;
-                }
-            } else { // English
-                if (mode === 'general') {
-                    finalPrompt = `Please accurately transcribe the attached audio file named "${filename}" into English.\n\nStrict Instruction: You must transcribe every single word from the very beginning to the end of the clip (Word-for-word). DO NOT summarize, DO NOT skip any parts, and DO NOT shorten the text. Output ONLY the transcribed text.`;
-                } else {
-                    finalPrompt = `Please transcribe the attached audio file named "${filename}" into English.\n\nInstruction: Provide a full transcription from start to finish, but please REMOVE filler words, stutters, and hesitation marks (e.g., um, ah, er, like, you know). Keep the core message and flow completely intact. Output ONLY the transcribed text.`;
+                    userPromptText = `Please transcribe this audio into English. Provide a full, word-for-word transcript. Most importantly: This is an interview or dialogue. Please clearly identify and separate the speakers by starting their lines with "Interviewer:" for the person asking questions and "Respondent:" for the person answering. Start a new line every time the speaker changes.`;
                 }
             }
-
-            promptOutput.value = finalPrompt;
-            showToast("ສ້າງຄຳສັ່ງສຳເລັດ! ກະລຸນາກັອບປີ້ແລ້ວນຳໄປວາງໃນ Gemini.", "success");
-            
-            // Auto copy optional
-            // copyPrompt();
-        }
-
-        // -- Copy to Clipboard --
-        function copyPrompt() {
-            if (!promptOutput.value) {
-                showToast("ຍັງບໍ່ມີຄຳສັ່ງໃຫ້ກັອບປີ້!", "warning");
-                return;
-            }
-            
-            promptOutput.select();
-            promptOutput.setSelectionRange(0, 99999); /* For mobile devices */
 
             try {
-                // Using document.execCommand as fallback for iframe environments
-                document.execCommand('copy');
-                showToast("ກັອບປີ້ຄຳສັ່ງສຳເລັດແລ້ວ!", "success");
+                setLoadingState(true);
                 
-                // Deselect text
-                window.getSelection().removeAllRanges();
-            } catch (err) {
-                showToast("ບໍ່ສາມາດກັອບປີ້ໄດ້, ກະລຸນາກັອບປີ້ດ້ວຍຕົວເອງ", "error");
+                // If it's the main file (not a chunk append), clear the output
+                if (!appendPrefix) {
+                    outputArea.value = "";
+                }
+                
+                // 1. Read file
+                loadingText.textContent = "ກຳລັງອ່ານຂໍ້ມູນໄຟລ໌ ແລະ ແປງເປັນ Base64...";
+                const base64Data = await readFileAsBase64(targetBlob);
+
+                // 2. Call API
+                loadingText.textContent = "ກຳລັງສົ່ງຂໍ້ມູນໃຫ້ Gemini ປະມວນຜົນ... (ອາດໃຊ້ເວລາ 1-3 ນາທີ)";
+                
+                // Use the correct preview model
+                const model = "gemini-2.5-flash-preview-09-2025";
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: userPromptText },
+                            { 
+                                inlineData: { 
+                                    mimeType: currentFile.type || "audio/mp3", 
+                                    data: base64Data 
+                                } 
+                            }
+                        ]
+                    }],
+                    systemInstruction: {
+                        parts: [{ text: systemInstructionText }]
+                    }
+                };
+
+                const responseData = await fetchWithRetry(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                // 3. Output result
+                const transcript = responseData.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (transcript) {
+                    // Append the transcript instead of overwriting, useful for chunks
+                    if (outputArea.value) {
+                        outputArea.value += appendPrefix + transcript;
+                    } else {
+                        outputArea.value = transcript;
+                    }
+                    
+                    // Auto scroll to bottom
+                    outputArea.scrollTop = outputArea.scrollHeight;
+                    
+                    showToast("Gemini ຖອດສຽງສຳເລັດແລ້ວ!", "success");
+                    return true;
+                } else {
+                    throw new Error("ບໍ່ມີຂໍ້ຄວາມຕອບກັບຈາກ AI");
+                }
+
+            } catch (error) {
+                console.error("Transcription Error:", error);
+                let errorMsg = error.message;
+                
+                if (error.message.includes("400") || error.message.toLowerCase().includes("payload")) {
+                    errorMsg = "ໄຟລ໌ໃຫຍ່ເກີນໄປ (Payload Too Large) ໃຫ້ລອງແບ່ງໄຟລ໌ໃຫ້ໜ້ອຍກວ່ານີ້.";
+                } else if (error.message.includes("key")) {
+                    errorMsg = "ເກີດຂໍ້ຜິດພາດກ່ຽວກັບ API Key ທີ່ໃຊ້ໃນການເຊື່ອມຕໍ່.";
+                }
+                
+                showToast("ເກີດຂໍ້ຜິດພາດ: " + errorMsg, "error");
+                return false;
+            } finally {
+                setLoadingState(false);
             }
         }
 
         // -- Export to Word --
         function exportToWord() {
-            const text = transcriptOutput.value.trim();
+            const text = outputArea.value.trim();
             if (!text) {
                 showToast("ບໍ່ມີຂໍ້ຄວາມໃຫ້ບັນທຶກ (No text to export)", "warning");
                 return;
             }
 
-            // Create a basic HTML structure that Word can read
             const htmlContent = `
                 <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
                 <head>
@@ -303,11 +622,9 @@
                 </html>
             `;
 
-            // Create Blob with BOM for UTF-8 compatibility in MS Word
             const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword' });
             const url = URL.createObjectURL(blob);
             
-            // Generate filename based on original audio file
             let downloadName = 'Transcript.doc';
             if (currentFile) {
                 downloadName = currentFile.name.split('.')[0] + '_Transcript.doc';
@@ -325,6 +642,21 @@
         }
 
         // -- Utility Functions --
+        function setLoadingState(isLoading) {
+            isProcessing = isLoading;
+            if (btnStart) btnStart.disabled = isLoading;
+            fileInput.disabled = isLoading;
+            btnRemoveFile.disabled = isLoading;
+            
+            if (isLoading) {
+                loadingOverlay.classList.remove('hidden');
+                loadingOverlay.classList.add('flex');
+            } else {
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');
+            }
+        }
+
         function showToast(message, type = 'info') {
             const toastContainer = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -337,7 +669,7 @@
                     break;
                 case 'error':
                     bgColor = 'bg-red-500';
-                    icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+                    icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
                     break;
                 case 'warning':
                     bgColor = 'bg-yellow-500';

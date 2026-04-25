@@ -68,6 +68,7 @@
                             <option value="interview">ແບບສຳພາດ (ແຍກ ຜູ້ຖາມ - ຜູ້ຕອບ)</option>
                             <option value="summary_natural">ແບບສັງລວມໃຫ້ເຂົ້າໃຈ ແຕ່ຮັກສາຄວາມເປັນທຳມະຊາດ (Summary & Natural)</option>
                             <option value="summary_interview">ແບບສຳພາດ + ສັງລວມທຳມະຊາດ (ແຍກຜູ້ຖາມ-ຜູ້ຕອບ ແລະ ຕັດໂຕງໂຕ້ຍ)</option>
+                            <option value="interview_natural_full">ແບບສຳພາດ+ຮັກສາແບບທຳມະຊາດ (ແຍກຜູ້ຖາມ-ຜູ້ຕອບ, ຄົບຖ້ວນ ແລະ ຕັດໂຕງໂຕ້ຍ)</option>
                         </select>
                     </div>
 
@@ -352,6 +353,8 @@
                     finalPrompt = `${prefixContext}ກະລຸນາຖອດສຽງຈາກໄຟລ໌ສຽງທີ່ແນບມານີ້ ຊື່ໄຟລ໌ "${filename}" ເປັນພາສາລາວ.\n\nຄຳສັ່ງສຳຄັນ: ໃຫ້ຖອດສຽງແລ້ວສັງລວມເນື້ອໃນໃຫ້ເຂົ້າໃຈງ່າຍຂຶ້ນ ແຕ່ **ຫ້າມຄັດຫຍໍ້ຈົນສັ້ນເກີນໄປ**. ໃຫ້ຮັກສາຄວາມໝາຍເດີມ ແລະ ຄວາມເປັນທຳມະຊາດຂອງການເວົ້າໄວ້ໃຫ້ຄົບຖ້ວນ. ພ້ອມທັງຕັດຄຳໂຕງໂຕ້ຍ, ຄຳຊ້ຳ, ຫຼື ຄຳລັງເລອອກ (ເຊັ່ນ: ເອີ, ອ່າ, ແບບວ່າ, ກະຄືວ່າ). ໃຫ້ພິມສະເພາະຂໍ້ຄວາມທີ່ປັບປຸງແລ້ວອອກມາເທົ່ານັ້ນ.`;
                 } else if (mode === 'summary_interview') {
                     finalPrompt = `${prefixContext}ກະລຸນາຖອດສຽງຈາກໄຟລ໌ສຽງທີ່ແນບມານີ້ ຊື່ໄຟລ໌ "${filename}" ເປັນພາສາລາວ.\n\nຄຳສັ່ງສຳຄັນທີ່ສຸດ (ຂໍ້ບັງຄັບ):\n1. ນີ້ແມ່ນບົດສົນທະນາ ຫຼື ການສຳພາດ. ໃຫ້ຟັງ ແລະ ແຍກຜູ້ເວົ້າຢ່າງຊັດເຈນ ໂດຍຂຶ້ນແຖວໃໝ່ທຸກຄັ້ງທີ່ປ່ຽນຄົນເວົ້າ.\n2. ຂຶ້ນໜ້າແຖວໃໝ່ ຕ້ອງໃສ່ຄຳວ່າ "ຜູ້ຖາມ:" ສຳລັບຄົນທີ່ຕັ້ງຄຳຖາມ ແລະ "ຜູ້ຕອບ:" ສຳລັບຄົນທີ່ຕອບ ສະເໝີ.\n3. ໃຫ້ຖອດສຽງແບບສັງລວມເນື້ອໃນໃຫ້ເຂົ້າໃຈງ່າຍຂຶ້ນ ແຕ່ **ຫ້າມຄັດຫຍໍ້ຈົນສັ້ນເກີນໄປ**. ໃຫ້ຮັກສາຄວາມໝາຍເດີມ ແລະ ຄວາມເປັນທຳມະຊາດຂອງການສົນທະນາໄວ້.\n4. ຕັດຄຳໂຕງໂຕ້ຍ, ຄຳຊ້ຳ, ຫຼື ຄຳລັງເລອອກທັງໝົດ (ເຊັ່ນ: ເອີ, ອ່າ, ແບບວ່າ, ກະຄືວ່າ).`;
+                } else if (mode === 'interview_natural_full') {
+                    finalPrompt = `${prefixContext}ກະລຸນາຖອດສຽງຈາກໄຟລ໌ສຽງທີ່ແນບມານີ້ ຊື່ໄຟລ໌ "${filename}" ເປັນພາສາລາວ.\n\nຄຳສັ່ງສຳຄັນທີ່ສຸດ (ຂໍ້ບັງຄັບ):\n1. ນີ້ແມ່ນບົດສົນທະນາ ຫຼື ການສຳພາດ. ໃຫ້ຟັງ ແລະ ແຍກຜູ້ເວົ້າຢ່າງຊັດເຈນ ໂດຍຂຶ້ນແຖວໃໝ່ທຸກຄັ້ງທີ່ປ່ຽນຄົນເວົ້າ.\n2. ຂຶ້ນໜ້າແຖວໃໝ່ ຕ້ອງໃສ່ຄຳວ່າ "ຜູ້ຖາມ:" ສຳລັບຄົນທີ່ຕັ້ງຄຳຖາມ ແລະ "ຜູ້ຕອບ:" ສຳລັບຄົນທີ່ຕອບ ສະເໝີ.\n3. ໃຫ້ຖອດທຸກຄຳເວົ້າແບບຄົບຖ້ວນ ແຕ່ຮັກສາຄວາມເປັນທຳມະຊາດຂອງການສົນທະນາໄວ້ ຫ້າມຕັດຫຍໍ້ ຫຼື ສະຫຼຸບຄວາມເດັດຂາດ.\n4. ຫ້າມເອົາຄຳເວົ້າຂອງຜູ້ຖາມ ແລະ ຜູ້ຕອບ ມາລວມກັນໃນຫຍໍ້ໜ້າດຽວເດັດຂາດ.\n5. ໃຫ້ຕັດຄຳໂຕງໂຕ້ຍ, ຄຳຊ້ຳ, ຫຼື ຄຳລັງເລອອກ (ເຊັ່ນ: ເອີ, ອ່າ, ແບບວ່າ, ກະຄືວ່າ) ເພື່ອໃຫ້ອ່ານງ່າຍຂຶ້ນ.`;
                 }
             } else { // English
                 if (mode === 'general') {
@@ -364,6 +367,8 @@
                     finalPrompt = `${prefixContext}Please transcribe the attached audio file named "${filename}" into English.\n\nInstruction: Transcribe and thoughtfully summarize the content for clarity, but **DO NOT over-abbreviate**. Maintain the original meaning and natural conversational flow. Also, remove all filler words, stutters, and hesitation marks (e.g., um, ah, er, like, you know). Output ONLY the refined transcribed text.`;
                 } else if (mode === 'summary_interview') {
                     finalPrompt = `${prefixContext}Please accurately transcribe the attached audio file named "${filename}" into English.\n\nStrict Instructions:\n1. This is an interview/dialogue. Clearly identify speakers by starting a new line EVERY TIME the speaker changes.\n2. Prefix the questioner's line with "Interviewer: " and the responder's line with "Respondent: ".\n3. Thoughtfully summarize the content for clarity, but **DO NOT over-abbreviate**. Maintain the original meaning and natural conversational flow.\n4. Remove all filler words, stutters, and hesitation marks (e.g., um, ah, er, like, you know).`;
+                } else if (mode === 'interview_natural_full') {
+                    finalPrompt = `${prefixContext}Please accurately transcribe the attached audio file named "${filename}" into English.\n\nStrict Instructions:\n1. This is an interview/dialogue. Clearly identify speakers by starting a new line EVERY TIME the speaker changes.\n2. Prefix the questioner's line with "Interviewer: " and the responder's line with "Respondent: ".\n3. Transcribe completely while maintaining the natural conversational flow. DO NOT summarize or shorten the text.\n4. Do not combine different speakers into the same paragraph.\n5. Remove all filler words, stutters, and hesitation marks (e.g., um, ah, er, like, you know).`;
                 }
             }
 
